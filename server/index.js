@@ -2,6 +2,7 @@ const express=require('express');
 const cors=require('cors');
 const axios=require('axios');
 const { GoogleGenAI } =require('@google/genai');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 require('dotenv').config();
 
@@ -52,12 +53,29 @@ app.post("/api/places", async (req, res) => {
 
   // Mood-to-place type mapping (Google Places types)
   const moodQueryMap = {
-    chill: "park",
-    hungry: "restaurant",
-    fun: "amusement_park",
-    romantic: "cafe",
-    sporty: "gym",
-  };
+  chill: "park",
+  foodie: "restaurant",
+  explore: "tourist_attraction",
+  romantic: "cafe",
+  adventurous: "amusement_park",
+  cultural: "museum",
+  nature: "natural_feature", // fallback, not directly supported
+  relaxing: "spa",
+  party: "night_club",
+  historical: "museum",
+  luxury: "shopping_mall",
+  budget: "restaurant",
+  techy: "electronics_store",
+  artistic: "art_gallery",
+  photography: "point_of_interest",
+  shopping: "shopping_mall",
+  religious: "church",
+  wildlife: "zoo",
+  fitness: "gym",
+  coffee: "cafe",
+  other: "tourist_attraction"
+};
+
 
   const type = moodQueryMap[mood?.toLowerCase()] || "restaurant";
 
@@ -81,7 +99,7 @@ app.post("/api/places", async (req, res) => {
       types: place.types,
       location: place.geometry.location,
     }));
-
+    console.log(" Places fetched:", places.length);
     res.json(places);
   } catch (err) {
     console.error("Google Places API error:", err.message);
@@ -91,40 +109,59 @@ app.post("/api/places", async (req, res) => {
 
 
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY );
 
 app.post("/api/plan-ai", async (req, res) => {
   const { mood, location, budget, places = [], movies = [] } = req.body;
 
   const prompt = `
-You are an AI day planner.
+You are an intelligent day planner AI.
+
 Location: ${location}
 Mood: ${mood}
 Budget: ₹${budget}
-Nearby places: ${places.map(p => `${p.name} (${p.category})`).join(", ")}
-Movies: ${movies.map(m => `${m.title} (Rating: ${m.rating})`).join(", ")}
 
-Suggest a fun plan using one place and one movie within budget.
+Nearby Places:
+${places.map((p, i) => `${i + 1}. ${p.name} (${p.types?.[0] || "general"}), Rating: ${p.rating || "N/A"}`).join("\n")}
+
+Movies Available:
+${movies.map((m, i) => `${i + 1}. ${m.title} (Rating: ${m.rating})`).join("\n")}
+
+Based on the user's mood and budget, choose one place and one movie, and generate a JSON object in the exact format below:
+
+{
+  "activity": "string",
+  "description": "string",
+  "location": "string",
+  "budget": number,
+  "duration": "string",
+  "rating": number,
+  "suggestion": "string",
+  "priority": number
+}
+
+Make sure to fill values sensibly. Return only the JSON.
 `;
 
-  try {
-    // 👇 Use getModel(), not getGenerativeModel()
-    const response = await ai.models.generateContent({
-      model: "models/gemini-1.5-flash",
-      contents: prompt,
-    });
+try {
+    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
-    const planText = response.text;
+    // Attempt to extract a JSON object from Gemini's text
+    const jsonMatch = text.match(/{[\s\S]*}/);
+    if (!jsonMatch) throw new Error("No valid JSON response from Gemini");
 
-    return res.json({ plan: planText });
+    const plan = JSON.parse(jsonMatch[0]);
+    res.json({ plan });
   } catch (err) {
     console.error("Gemini API error:", err.message);
     res.status(500).json({ error: "Failed to generate plan" });
   }
 });
-
-
-
 
 app.listen(port,()=>{
     console.log(`Server is running on http://localhost:${port}`);
