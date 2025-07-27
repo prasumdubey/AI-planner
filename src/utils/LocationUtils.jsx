@@ -1,7 +1,6 @@
-// src/utils/locationUtils.js
-
-
 const API = import.meta.env.VITE_API_URL;
+
+
 export const getCityName = async () => {
   try {
     if ("geolocation" in navigator) {
@@ -19,15 +18,16 @@ export const getCityName = async () => {
               data.address?.city ||
               data.address?.town ||
               data.address?.state ||
+              data.address?.county ||
               "";
              console.log(" City from navigator:", city);
 
             resolve(city);
           },
-          async () => {
+          async (error) => {
             console.warn(" Geolocation error:", error.message);
             console.log(" Falling back to IP-based location");
-            const res = await fetch("http://ip-api.com/json");
+            const res = await fetch("https://ip-api.com/json");
             const data = await res.json();
              console.log(" City from IP:", data.city);
             resolve(data.city);
@@ -35,10 +35,10 @@ export const getCityName = async () => {
         );
       });
     } else {
-      const res = await fetch("http://ip-api.com/json");
+      const res = await fetch("https://ip-api.com/json");
       const data = await res.json();
        console.log("🌆 City from IP:", data.city);
-      return data.city;
+      return data.city || "Delhi";
     }
   } catch (err) {
     console.warn("Location fetch failed");
