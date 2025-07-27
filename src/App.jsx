@@ -5,7 +5,7 @@ import InputForm from "./pages/InputForm";
 import FirstPage from "./pages/FirstPage";
 import Navbar from "./components/Navbar";
 import PlanDisplay from "./pages/PlanDisplay"; 
-
+const API = import.meta.env.VITE_API_URL;
 
 
 const getUserLocation = () => {
@@ -29,18 +29,16 @@ const getUserLocation = () => {
 };
 
 const geocodeCityToLatLng = async (city) => {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`;
+  const url = `${API}/api/geocode?city=${encodeURIComponent(city)}`;
   const res = await fetch(url);
   const data = await res.json();
-  
-  if (data.length > 0) {
-    return {
-      lat: parseFloat(data[0].lat),
-      lon: parseFloat(data[0].lon),
-    };
-  } else {
-    throw new Error("City not found");
-  }
+
+  if (data.error) throw new Error("City not found");
+
+  return {
+    lat: data.lat,
+    lon: data.lon,
+  };
 };
 
 const FormPage = () => {
@@ -51,7 +49,7 @@ const FormPage = () => {
     try{
       // const userLocation = await getUserLocation();
       const userLocation=await geocodeCityToLatLng(formData.location);
-      const resp1=await fetch("http://localhost:5000/api/places", {
+      const resp1=await fetch(`${API}/api/places`, {
         method:"POST",
         headers:{"Content-Type": "application/json"},
         body: JSON.stringify({lat: userLocation.lat,
@@ -64,7 +62,7 @@ const FormPage = () => {
 
       console.log("API Response:", data1);
 
-      const resp2=await fetch("http://localhost:5000/api/plan-ai",{
+      const resp2=await fetch(`${API}/api/plan-ai`,{
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({mood: formData.mood,

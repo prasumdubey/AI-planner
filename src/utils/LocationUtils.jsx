@@ -1,4 +1,7 @@
 // src/utils/locationUtils.js
+
+
+const API = import.meta.env.VITE_API_URL;
 export const getCityName = async () => {
   try {
     if ("geolocation" in navigator) {
@@ -9,7 +12,7 @@ export const getCityName = async () => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
 
-            const res = await fetch(`http://localhost:5000/api/reverse-geocode?lat=${lat}&lon=${lon}`);
+            const res = await fetch(`${API}/api/reverse-geocode?lat=${lat}&lon=${lon}`);
             const data = await res.json();
 
             const city =

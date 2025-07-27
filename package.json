@@ -1,12 +1,14 @@
 {
   "name": "ai-planner",
+  "type": "module",
   "private": true,
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server/index.js"
   },
   "dependencies": {
     "@google/genai": "^1.10.0",
@@ -32,7 +34,7 @@
     "vite": "^7.0.4"
   },
   "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
-  "main": "eslint.config.js",
+  "main": "server/index.js",
   "keywords": [],
   "author": "",
   "license": "ISC"

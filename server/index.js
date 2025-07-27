@@ -1,13 +1,17 @@
-const express=require('express');
-const cors=require('cors');
-const axios=require('axios');
-const { GoogleGenAI } =require('@google/genai');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import axios from 'axios';
+import dotenv from 'dotenv';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+dotenv.config();
 
 const app=express();
-app.use(cors());
+app.use(cors({
+    origin: 'https://plan-less-delta.vercel.app',  
+    methods: ['GET', 'POST'],                     
+    credentials: true
+  }
+));
 app.use(express.json());
 
 const port= process.env.PORT ; // Use environment variable or default to 5000
@@ -46,6 +50,36 @@ app.get("/api/reverse-geocode", async (req, res) => {
 });
 
      
+app.get("/api/geocode", async (req, res) => {
+  const { city } = req.query;
+  try {
+    const response = await axios.get("https://nominatim.openstreetmap.org/search", {
+      params: {
+        format: "json",
+        q: city,
+        limit: 1,
+      },
+      headers: {
+        "User-Agent": "ai-planner/1.0 (your-email@example.com)",
+      },
+    });
+
+    if (!response.data.length) {
+      return res.status(404).json({ error: "City not found" });
+    }
+
+    const location = response.data[0];
+    res.json({
+      lat: parseFloat(location.lat),
+      lon: parseFloat(location.lon),
+    });
+  } catch (err) {
+    console.error("Geocode error:", err.message);
+    res.status(500).json({ error: "Failed to geocode city" });
+  }
+});
+
+
 app.post("/api/places", async (req, res) => {
   const { lat, lon, mood, radius } = req.body;
 
