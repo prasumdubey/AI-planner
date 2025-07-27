@@ -7,7 +7,7 @@ dotenv.config();
 
 const app=express();
 app.use(cors({
-    origin: 'https://plan-less-delta.vercel.app',  
+    origin: 'https://ai-planner-frontend.vercel.app/',  
     methods: ['GET', 'POST'],                     
     credentials: true
   }
