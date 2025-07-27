@@ -6,29 +6,8 @@ import FirstPage from "./pages/FirstPage";
 import Navbar from "./components/Navbar";
 import PlanDisplay from "./pages/PlanDisplay"; 
 
-// function App() {
-//   const handleFormSubmit = async (formData) => {
-//     try{
-//       const res=await fetch("http://localhost:5000/plan", {
-//         method:"POST",
-//         headers:{"Content-Type": "application/json"},
-//         body: JSON.stringify(formData),
-//     });
-//     const data=await res.json();
-//     console.log("Response from server:", data);
-//     } catch (error) {
-//       console.log("Error sending ddata to server:", error);
-//   }
-    
-//   };
 
-//   return (
-//     <div className="App">
-//       <InputForm onSubmit={handleFormSubmit} />
-//     </div>
-//   );
-// }
-// locationUtils.js
+
 const getUserLocation = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -68,6 +47,7 @@ const FormPage = () => {
   const navigate = useNavigate();
 
   const handleFormSubmit = async (formData) => {
+    let res=null;
     try{
       // const userLocation = await getUserLocation();
       const userLocation=await geocodeCityToLatLng(formData.location);
@@ -83,12 +63,27 @@ const FormPage = () => {
       const data1=await resp1.json();
 
       console.log("API Response:", data1);
+
+      const resp2=await fetch("http://localhost:5000/api/plan-ai",{
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({mood: formData.mood,
+                              location: formData.location,
+                              budget: formData.budget,
+                              places: data1,
+  }),
+      });
+      if(!resp2.ok) throw new Error("Failed to fetch data from AI planner API");
+      const data2=await resp2.json(); 
+      res=data2;
+      console.log("AI Planner Response:", data2);
     }
      catch (error) {
       console.error("Error submitting form:", error.message); 
     }
     console.log("Form Data:", formData); 
-    navigate("/plan"); 
+    navigate("/plan", { state: { plan: res.plan } });
+    // navigate("/plan"); 
   };
 
   return <InputForm onSubmit={handleFormSubmit} />;

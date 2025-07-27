@@ -114,9 +114,36 @@ app.post("/api/places", async (req, res) => {
 const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY );
 
 app.post("/api/plan-ai", async (req, res) => {
-  const { mood, location, budget, places = [], movies = [] } = req.body;
+  const { mood, location, budget, places = [] } = req.body;
 
-  const prompt = `
+//   const prompt = `
+// You are an intelligent day planner AI.
+
+// Location: ${location}
+// Mood: ${mood}
+// Budget: ₹${budget}
+
+// Nearby Places:
+// ${places.map((p, i) => `${i + 1}. ${p.name} (${p.types?.[0] || "general"}), Rating: ${p.rating || "N/A"}`).join("\n")}
+
+
+// Based on the user's mood and budget, choose one place and one movie, and generate a JSON object in the exact format below:
+
+// {
+//   "activity": "string",
+//   "description": "string",
+//   "location": "string",
+//   "budget": number,
+//   "duration": "string",
+//   "rating": number,
+//   "suggestion": "string",
+//   "priority": number
+// }
+
+// Make sure to fill values sensibly. Return only the JSON.
+// `;
+
+const prompt = `
 You are an intelligent day planner AI.
 
 Location: ${location}
@@ -126,10 +153,7 @@ Budget: ₹${budget}
 Nearby Places:
 ${places.map((p, i) => `${i + 1}. ${p.name} (${p.types?.[0] || "general"}), Rating: ${p.rating || "N/A"}`).join("\n")}
 
-Movies Available:
-${movies.map((m, i) => `${i + 1}. ${m.title} (Rating: ${m.rating})`).join("\n")}
-
-Based on the user's mood and budget, choose one place and one movie, and generate a JSON object in the exact format below:
+Generate a list of up to 5 different plans (one per place), choosing places that match the user's mood and fit within the ₹${budget} budget. Each plan should be a JSON object in this exact format:
 
 {
   "activity": "string",
@@ -142,8 +166,9 @@ Based on the user's mood and budget, choose one place and one movie, and generat
   "priority": number
 }
 
-Make sure to fill values sensibly. Return only the JSON.
+Only include places where the budget is respected. Return the result as a JSON array with up to 5 objects. Only return valid JSON. Do not include anything else.
 `;
+
 
 try {
     const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -152,7 +177,7 @@ try {
     const text = response.text();
 
     // Attempt to extract a JSON object from Gemini's text
-    const jsonMatch = text.match(/{[\s\S]*}/);
+    const jsonMatch = text.match(/\[\s*{[\s\S]*}\s*\]/);
     if (!jsonMatch) throw new Error("No valid JSON response from Gemini");
 
     const plan = JSON.parse(jsonMatch[0]);
