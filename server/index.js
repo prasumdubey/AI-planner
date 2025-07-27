@@ -10,7 +10,7 @@ const app=express();
 app.use(cors());
 app.use(express.json());
 
-const port= 5000;
+const port= process.env.PORT ; // Use environment variable or default to 5000
 
 const placeKey = process.env.GOOGLE_PLACES_API_KEY;
 
