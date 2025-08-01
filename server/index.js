@@ -7,12 +7,28 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 dotenv.config();
 
 const app=express();
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://ai-planner-frontend.vercel.app"
+];
+
 app.use(cors({
-    origin: 'https://ai-planner-frontend.vercel.app',  
-    methods: ['GET', 'POST'],                     
-    credentials: true
-  }
-));
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ['GET', 'POST'],                     
+  credentials: true
+}));
+// app.use(cors({
+//     origin: 'https://ai-planner-frontend.vercel.app',  
+//     methods: ['GET', 'POST'],                     
+//     credentials: true
+//   }
+// ));
 app.use(express.json());
 
 const port= process.env.PORT || 5000;
@@ -41,7 +57,7 @@ app.get("/api/reverse-geocode", async (req, res) => {
         format: "json",
       },
       headers: {
-          "User-Agent": "ai-planner/1.0 (your-email@example.com)"
+          "User-Agent": "ai-planner/1.0 (prasum@example.com)"
         }
      });
             res.json(response.data);
@@ -128,7 +144,6 @@ app.post("/api/places", async (req, res) => {
         },
       }
     );
-
     const places = response.data.results.map((place) => ({
       name: place.name,
       address: place.vicinity,

@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+
 import "./App.css";
 import InputForm from "./pages/InputForm";
 import FirstPage from "./pages/FirstPage";
@@ -58,9 +60,11 @@ const geocodeCityToLatLng = async (city) => {
 
 const FormPage = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const handleFormSubmit = async (formData) => {
     let res=null;
+    setLoading(true);
     try{
       const userLocation=await geocodeCityToLatLng(formData.location);
       const resp1=await fetch(`${API}/api/places`, {
@@ -90,10 +94,13 @@ const FormPage = () => {
       res=data2;
       console.log("AI Planner Response:", data2);
     }
-     catch (error) {
-      console.error("Error submitting form:", error.message); 
+    catch (error) {
+      console.error("Error submitting form:", error.message);
+    } finally {
+      setLoading(false); 
     }
-    console.log("Form Data:", formData); 
+
+  
     if (res && res.plan) {
       navigate("/plan", { state: { plan: res.plan } });
     } else {
@@ -101,7 +108,7 @@ const FormPage = () => {
     }
   };
 
-  return <InputForm onSubmit={handleFormSubmit} />;
+  return <InputForm onSubmit={handleFormSubmit} loading={loading}/>;
 };
 
 const App = () => {

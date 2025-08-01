@@ -16,7 +16,7 @@ const groupTypes = ["Friends", "Family", "Partner", "Colleagues", "Kids", "Other
 const timePreferences = ["Morning", "Afternoon", "Evening", "Anytime"];
 const durations = ["Half Day", "Full Day", "Custom (in hours)"];
 
-const InputForm = ({ onSubmit }) => {
+const InputForm = ({ onSubmit ,loading}) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     mood: "chill",
@@ -273,11 +273,25 @@ const InputForm = ({ onSubmit }) => {
           <button
             type="submit"
             className="submit-btn"
-            disabled={loadingLocation}
-            onClick={() => navigate("/plan")}
-            style={{ width: "25%" }}
+            disabled={loading || loadingLocation}
+            // onClick={() => navigate("/plan")}
+            style={{ width: "25%", position: "relative" }}
           >
-            {loadingLocation ? "Loading..." : "Generate Plan"}
+            {/* {loadingLocation ? "Loading..." : "Generate Plan"}
+            {loading ? (
+          <div className="spinner-btn"></div>
+        ) : (
+          "Generate Plan"
+        )} */}
+
+         {loading || loadingLocation ? (
+    <>
+      <div className="spinner-btn" style={{ marginRight: "8px" }} />
+      Loading...
+    </>
+  ) : (
+    "Generate Plan"
+  )}
           </button>
         </div>
       </form>
