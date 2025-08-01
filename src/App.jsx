@@ -1,5 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import React, { useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 import "./App.css";
 import InputForm from "./pages/InputForm";
@@ -29,20 +32,7 @@ const getUserLocation = () => {
   });
 };
 
-// const geocodeCityToLatLng = async (city) => {
-//   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`;
-//   const res = await fetch(url);
-//   const data = await res.json();
-  
-//   if (data.length > 0) {
-//     return {
-//       lat: parseFloat(data[0].lat),
-//       lon: parseFloat(data[0].lon),
-//     };
-//   } else {
-//     throw new Error("City not found");
-//   }
-// };
+
 
 const geocodeCityToLatLng = async (city) => {
   const url = `${API}/api/geocode?city=${encodeURIComponent(city)}`;
@@ -66,36 +56,91 @@ const FormPage = () => {
     let res=null;
     setLoading(true);
     try{
-      const userLocation=await geocodeCityToLatLng(formData.location);
-      const resp1=await fetch(`${API}/api/places`, {
-        method:"POST",
-        headers:{"Content-Type": "application/json"},
-        body: JSON.stringify({lat: userLocation.lat,
-                              lon: userLocation.lon,
-                              radius: formData.radius,
-                              mood: formData.mood,}),
-      });
-      if(!resp1.ok)  throw new Error("Failed to fetch data from places api");
-      const data1=await resp1.json();
+      // const userLocation=await geocodeCityToLatLng(formData.location);
+       let userLocation;
+    try {
+      userLocation = await geocodeCityToLatLng(formData.location);
+    } catch (geoErr) {
+      toast.error("Failed to find the location you entered. Please enter a valid city name.");
+      return;
+    }
+      // const resp1=await fetch(`${API}/api/places`, {
+      //   method:"POST",
+      //   headers:{"Content-Type": "application/json"},
+      //   body: JSON.stringify({lat: userLocation.lat,
+      //                         lon: userLocation.lon,
+      //                         radius: formData.radius,
+      //                         mood: formData.mood,}),
+      // });
 
-      console.log("API Response:", data1);
-
-      const resp2=await fetch(`${API}/api/plan-ai`,{
+    let data1;
+    try {
+      const resp1 = await fetch(`${API}/api/places`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({mood: formData.mood,
-                              location: formData.location,
-                              budget: formData.budget,
-                              places: data1,
-  }),
+        body: JSON.stringify({
+          lat: userLocation.lat,
+          lon: userLocation.lon,
+          radius: formData.radius,
+          mood: formData.mood,
+        }),
       });
-      if(!resp2.ok) throw new Error("Failed to fetch data from AI planner API");
-      const data2=await resp2.json(); 
-      res=data2;
+
+      if(!resp1.ok)  throw new Error("Failed to fetch data from places api");
+
+      data1 = await resp1.json();
+      console.log("API Response:", data1);
+
+      if (!data1 || data1.length === 0) {
+        toast.warn("No nearby places found for your location and mood.");
+        return;
+      }
+
+    } catch (placeErr) {
+      toast.error("Failed to fetch nearby places. Please try again later.");
+      return;
+    }
+
+  //     const resp2=await fetch(`${API}/api/plan-ai`,{
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({mood: formData.mood,
+  //                             location: formData.location,
+  //                             budget: formData.budget,
+  //                             places: data1,
+  // }),
+  //     });
+  //     if(!resp2.ok) throw new Error("Failed to fetch data from AI planner API");
+  //     const data2=await resp2.json(); 
+  //     res=data2;
+  //     console.log("AI Planner Response:", data2);
+
+   try {
+      const resp2 = await fetch(`${API}/api/plan-ai`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mood: formData.mood,
+          location: formData.location,
+          budget: formData.budget,
+          places: data1,
+        }),
+      });
+
+      if (!resp2.ok) throw new Error("AI Planner API response not OK");
+
+      const data2 = await resp2.json();
+      res = data2;
       console.log("AI Planner Response:", data2);
+
+    } catch (aiErr) {
+      toast.error("Failed to generate a plan. Please try again.");
+      return;
+    }
     }
     catch (error) {
       console.error("Error submitting form:", error.message);
+      toast.error("Something went wrong. Please try again later.");
     } finally {
       setLoading(false); 
     }
@@ -104,7 +149,7 @@ const FormPage = () => {
     if (res && res.plan) {
       navigate("/plan", { state: { plan: res.plan } });
     } else {
-      alert("Sorry! Couldn't generate a plan. Please try again.");
+      toast.error("Sorry! Couldn't generate a plan. Please try again.");
     }
   };
 
@@ -116,6 +161,7 @@ const App = () => {
   return (
     <Router>
       <Navbar />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="app-body">
         <Routes>
           <Route path="/" element={<FirstPage />} />
