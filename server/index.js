@@ -3,12 +3,14 @@ import cors from 'cors';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
 const app=express();
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:4173",
   "https://ai-planner-frontend.vercel.app"
 ];
 
@@ -31,6 +33,19 @@ app.use(cors({
 // ));
 app.use(express.json());
 
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: "Too many requests, please try again later." },
+});
+
+const Limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30, // Gemini is costly
+  message: { error: "Too many  requests, please slow down." },
+});
+
+
 const port= process.env.PORT || 5000;
 const placeKey = process.env.GOOGLE_PLACES_API_KEY;
 // const API = process.env.VITE_API_URL;
@@ -47,7 +62,7 @@ app.post('/plan',(req,res)=>{
     res.json({message: "Plan received successfully", data:req.body});
 })
 
-app.get("/api/reverse-geocode", async (req, res) => {
+app.get("/api/reverse-geocode",generalLimiter, async (req, res) => {
     const {lat, lon} =req.query;
     try{
          const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
@@ -68,7 +83,7 @@ app.get("/api/reverse-geocode", async (req, res) => {
   }
 });
 
-app.get("/api/geocode", async (req, res) => {
+app.get("/api/geocode", generalLimiter,async (req, res) => {
   const { city } = req.query;
   try {
     const response = await axios.get("https://nominatim.openstreetmap.org/search", {
@@ -99,7 +114,7 @@ app.get("/api/geocode", async (req, res) => {
 
 
      
-app.post("/api/places", async (req, res) => {
+app.post("/api/places", Limiter,async (req, res) => {
   const { lat, lon, mood, radius } = req.body;
 
   console.log("Request received:", { lat, lon, mood, radius });
@@ -164,8 +179,8 @@ const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY );
 console.log("Gemini API Key Loaded:", process.env.GEMINI_API_KEY ? "Yes" : "No");
 
 
-app.post("/api/plan-ai", async (req, res) => {
-  const { mood, location, budget, places = [] } = req.body;
+app.post("/api/plan-ai",Limiter, async (req, res) => {
+  const { mood, location, budget, places = [], groupSize, groupType, timePref, duration } = req.body;
 
 const prompt = `
 You are an intelligent day planner AI.
@@ -173,11 +188,17 @@ You are an intelligent day planner AI.
 Location: ${location}
 Mood: ${mood}
 Budget: ₹${budget}
+Group Size: ${groupSize}
+Group Type: ${groupType}
+Time Preference: ${timePref}
+Preferred Duration: ${duration}
 
 Nearby Places:
-${places.map((p, i) => `${i + 1}. ${p.name} (${p.types?.[0] || "general"}), Rating: ${p.rating || "N/A"}`).join("\n")}
+${places.map((p, i) => `${i + 1}. ${p.name}  (${p.types?.[0] || "general"}), Rating: ${p.rating || "N/A"}`).join("\n")}
 
-Generate a list of up to 5 different plans (one per place), choosing places that match the user's mood and fit within the ₹${budget} budget. Each plan should be a JSON object in this exact format:
+Generate a list of up to 5 different plans (one per place), choosing places that match the user's mood, group type, group size,time preference, and fit within the ₹${budget} budget. 
+
+Each plan should be a JSON object in this exact format:
 
 {
   "activity": "string",
@@ -190,7 +211,12 @@ Generate a list of up to 5 different plans (one per place), choosing places that
   "priority": number
 }
 
-Only include places where the budget is respected. Return the result as a JSON array with up to 5 objects. Only return valid JSON. Do not include anything else.
+Constraints:
+- Only include places where the budget is respected.
+- Match activities to mood, group type (e.g., family, friends, couple, solo), group size and time preference (morning, afternoon, evening, night).
+- Respect the preferred duration (do not exceed it).
+- Return the result as a JSON array with up to 5 objects.
+- Only return valid JSON. Do not include anything else.
 `;
 
 

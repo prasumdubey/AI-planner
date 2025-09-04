@@ -124,6 +124,10 @@ const FormPage = () => {
           location: formData.location,
           budget: formData.budget,
           places: data1,
+          groupSize : formData.groupSize,
+          groupType : formData.groupType, 
+          timePref : formData.timePref, 
+          duration : formData.duration,
         }),
       });
 

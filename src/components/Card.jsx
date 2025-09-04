@@ -29,7 +29,7 @@ const Card = ({
       </div>
 
       <div className="suggestion-box">
-        <h4>Why this?</h4>
+        <h4>Suggestion !</h4>
         <p>{suggestion}</p>
       </div>
     </div>
