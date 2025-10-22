@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import {GoogleGenAI} from '@google/genai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import rateLimit from "express-rate-limit";
 
@@ -93,7 +94,7 @@ app.get("/api/geocode", generalLimiter,async (req, res) => {
         limit: 1,
       },
       headers: {
-        "User-Agent": "ai-planner/1.0 (your-email@example.com)",
+        "User-Agent": "ai-planner/1.0 (your-e@example.com)",
       },
     });
 
@@ -174,9 +175,11 @@ app.post("/api/places", Limiter,async (req, res) => {
   }
 });
 
-
-const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY );
+const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY});
+//const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY );
 console.log("Gemini API Key Loaded:", process.env.GEMINI_API_KEY ? "Yes" : "No");
+// const models = await ai.models.list();
+// console.log(models);
 
 
 app.post("/api/plan-ai",Limiter, async (req, res) => {
@@ -221,10 +224,20 @@ Constraints:
 
 
 try {
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    // const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // const result = await model.generateContent(prompt);
+    // const response = await result.response;
+    // const text = response.text();
+
+    const result = await ai.models.generateContent({
+  model: "gemini-2.0-flash",
+  contents: prompt,
+});
+//const text = result.output[0].content[0].text;
+const text = result.text;
+//const text = result.output?.[0]?.content?.[0]?.text;
+if (!text) throw new Error("No text returned from Gemini");
+
 
     const jsonMatch = text.match(/\[\s*{[\s\S]*}\s*\]/);
     if (!jsonMatch) throw new Error("No valid JSON response from Gemini");
