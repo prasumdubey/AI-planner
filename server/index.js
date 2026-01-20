@@ -5,9 +5,16 @@ import dotenv from 'dotenv';
 import {GoogleGenAI} from '@google/genai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import rateLimit from "express-rate-limit";
+import OpenAI from "openai";
+
+
+
 
 dotenv.config();
-
+const openai = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+});
 const app=express();
 const allowedOrigins = [
   "http://localhost:5173",
@@ -73,7 +80,7 @@ app.get("/api/reverse-geocode",generalLimiter, async (req, res) => {
         format: "json",
       },
       headers: {
-          "User-Agent": "ai-planner/1.0 (prasum@example.com)"
+          "User-Agent": "ai-planner/1.0 (prasumdubey@gmail.com)"
         }
      });
             res.json(response.data);
@@ -94,7 +101,7 @@ app.get("/api/geocode", generalLimiter,async (req, res) => {
         limit: 1,
       },
       headers: {
-        "User-Agent": "ai-planner/1.0 (your-e@example.com)",
+        "User-Agent": "ai-planner/1.0 (prasumdubey@gmail.com)",
       },
     });
 
@@ -223,31 +230,61 @@ Constraints:
 `;
 
 
+// try {
+//     // const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+//     // const result = await model.generateContent(prompt);
+//     // const response = await result.response;
+//     // const text = response.text();
+
+//     const result = await ai.models.generateContent({
+//   model: "gemini-2.0-flash",
+//   contents: prompt,
+// });
+// const text = result.text;
+// if (!text) throw new Error("No text returned from Gemini");
+
+
+//     const jsonMatch = text.match(/\[\s*{[\s\S]*}\s*\]/);
+//     if (!jsonMatch) throw new Error("No valid JSON response from Gemini");
+
+//     const plan = JSON.parse(jsonMatch[0]);
+//     res.json({ plan });
+//   } catch (err) {
+//     console.error("Gemini API error:", err.message);
+//     res.status(500).json({ error: "Failed to generate plan" });
+//   }
 try {
-    // const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-    // const result = await model.generateContent(prompt);
-    // const response = await result.response;
-    // const text = response.text();
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: "You are a planner AI that must return only valid JSON. No text, no markdown, no explanation.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    temperature: 0.3,
+  });
 
-    const result = await ai.models.generateContent({
-  model: "gemini-2.0-flash",
-  contents: prompt,
-});
-//const text = result.output[0].content[0].text;
-const text = result.text;
-//const text = result.output?.[0]?.content?.[0]?.text;
-if (!text) throw new Error("No text returned from Gemini");
+  const text = completion.choices[0]?.message?.content;
+
+  if (!text) throw new Error("No text returned from OpenAI");
+
+  const jsonMatch = text.match(/\[\s*{[\s\S]*}\s*\]/);
+  if (!jsonMatch) throw new Error("No valid JSON response from OpenAI");
+
+  const plan = JSON.parse(jsonMatch[0]);
+
+  res.json({ plan });
+} catch (err) {
+  console.error("OpenAI API error:", err.message);
+  res.status(500).json({ error: "Failed to generate plan" });
+}
 
 
-    const jsonMatch = text.match(/\[\s*{[\s\S]*}\s*\]/);
-    if (!jsonMatch) throw new Error("No valid JSON response from Gemini");
-
-    const plan = JSON.parse(jsonMatch[0]);
-    res.json({ plan });
-  } catch (err) {
-    console.error("Gemini API error:", err.message);
-    res.status(500).json({ error: "Failed to generate plan" });
-  }
 });
 
 app.listen(port,()=>{
